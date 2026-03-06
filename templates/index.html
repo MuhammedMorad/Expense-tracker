@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div
+    class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden md:max-w-2xl mt-10 p-8 text-center transition-all duration-300">
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">{{ t('record_new') }}</h1>
+        <p class="text-gray-500 dark:text-gray-400">{{ t('mic_hint') }}</p>
+        <p class="text-sm text-gray-400 mt-1">{{ t('example') }}</p>
+    </div>
+
+    <!-- Recorder Section -->
+    <div class="relative flex justify-center items-center py-10" id="recorder-container">
+        <button id="record-btn"
+            class="w-24 h-24 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-lg flex items-center justify-center text-4xl transition-all duration-300 transform hover:scale-110 focus:outline-none">
+            <i class="fa-solid fa-microphone"></i>
+        </button>
+        <div id="recording-indicator"
+            class="hidden absolute w-24 h-24 rounded-full border-4 border-brand-200 mic-wave pointer-events-none"></div>
+    </div>
+
+    <p id="status-text" class="text-lg text-brand-700 dark:text-brand-400 font-semibold h-8 mb-4">{{ t('status_ready')
+        }}</p>
+
+    <!-- Error Message -->
+    <div id="error-message"
+        class="hidden bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded relative mb-4"
+        role="alert">
+        <span class="block sm:inline" id="error-text"></span>
+    </div>
+
+    <!-- Result Form (Initially Hidden) -->
+    <div id="result-form"
+        class="hidden text-right bg-gray-50 dark:bg-gray-700 p-6 rounded-xl border border-gray-100 dark:border-gray-600 shadow-inner rtl:text-right ltr:text-left text-{{ 'right' if lang == 'ar' else 'left' }}">
+
+        <!-- Amount -->
+        <div class="mb-4">
+            <label class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" for="amount">
+                {{ t('amount') }}
+            </label>
+            <input
+                class="shadow appearance-none border dark:border-gray-600 rounded w-full py-3 px-4 text-gray-700 dark:text-gray-200 dark:bg-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-500"
+                id="amount" type="number" step="0.01" placeholder="0.00">
+        </div>
+
+        <!-- Year (Optional) -->
+        <div class="mb-4">
+            <label class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" for="year">
+                {{ t('year') if t('year') != 'year' else 'Year (العام)' }}
+            </label>
+            <input
+                class="shadow appearance-none border dark:border-gray-600 rounded w-full py-3 px-4 text-gray-700 dark:text-gray-200 dark:bg-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-500"
+                id="year" type="number" placeholder="YYYY">
+        </div>
+
+        <!-- Description -->
+        <div class="mb-4">
+            <label class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" for="description">
+                {{ t('description') }}
+            </label>
+            <input
+                class="shadow appearance-none border dark:border-gray-600 rounded w-full py-3 px-4 text-gray-700 dark:text-gray-200 dark:bg-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-500"
+                id="description" type="text" placeholder="{{ t('description') }}">
+        </div>
+
+        <!-- Expense Type (Essential/Side) -->
+        <div class="mb-6">
+            <label class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2" for="expense_type">
+                {{ t('expense_type') }}
+            </label>
+            <select
+                class="shadow appearance-none border dark:border-gray-600 rounded w-full py-3 px-4 text-gray-700 dark:text-gray-200 dark:bg-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-500"
+                id="expense_type">
+                <option value="Essential">{{ t('essential') }}</option>
+                <option value="Side">{{ t('side') }}</option>
+            </select>
+        </div>
+
+        <div class="flex items-center justify-between gap-4">
+            <button id="cancel-btn"
+                class="w-full bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition">
+                {{ t('cancel') }}
+            </button>
+            <button id="save-btn"
+                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition flex justify-center items-center">
+                <i class="fa-solid fa-check mx-2"></i> {{ t('save') }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Animation/Message -->
+    <div id="success-screen" class="hidden py-10">
+        <div class="text-brand-500 text-6xl mb-4">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ t('success_msg') }}</h3>
+        <button id="new-record-btn" class="mt-6 text-brand-600 dark:text-brand-400 underline hover:text-brand-800">{{
+            t('new_record') }}</button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/main.js"></script>
+<script>
+    window.translations = {
+        'status_ready': "{{ t('status_ready') }}",
+        'status_recording': "{{ t('status_recording') }}",
+        'status_processing': "{{ t('status_processing') }}",
+        'saving': "{{ t('save') }}..."
+    };
+</script>
+{% endblock %}

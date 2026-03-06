@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div
+        class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm gap-4">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{{ t('expenses_table') }}</h1>
+
+        <div class="flex flex-1 w-full md:w-auto gap-4 items-center flex-wrap">
+            <!-- Year Filter -->
+            <form action="{{ url_for('expenses_table') }}" method="GET" class="flex items-center">
+                <select name="year" onchange="this.form.submit()"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">{{ t('date') }} (All)</option>
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if selected_year and selected_year|int==year %}selected{% endif %}>{{
+                        year }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <!-- Search Input -->
+            <div class="relative flex-1 min-w-[180px]">
+                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                    <i class="fa-solid fa-search text-gray-500 dark:text-gray-400"></i>
+                </div>
+                <input type="text" id="customSearch"
+                    class="block w-full p-2.5 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                    placeholder="{{ t('search') if t('search') != 'search' else 'Search...' }}" oninput="filterTable()">
+            </div>
+
+            <!-- Export Excel Button -->
+            <button onclick="exportToExcel()"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center transition whitespace-nowrap">
+                <i class="fa-solid fa-file-excel mx-2"></i> {{ t('export_excel') }}
+            </button>
+
+            <!-- Add Button -->
+            <button onclick="openAddModal()"
+                class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg flex items-center transition whitespace-nowrap">
+                <i class="fa-solid fa-plus mx-2"></i> {{ t('add_manual') }}
+            </button>
+
+            <!-- Delete All Button -->
+            <form action="{{ url_for('delete_all_expenses') }}" method="POST"
+                onsubmit="return confirm(`{{ t('confirm_delete_all') }}`);">
+                <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center transition whitespace-nowrap">
+                    <i class="fa-solid fa-trash mx-2"></i> {{ t('delete_all') }}
+                </button>
+            </form>
+        </div>
+
+        <!-- <a href="{{ url_for('dashboard') }}"
+            class="text-brand-600 hover:text-brand-700 dark:text-brand-400 font-medium whitespace-nowrap">
+            <i class="fa-solid fa-arrow-right mx-1 rtl:rotate-180"></i> {{ t('dashboard') }}
+        </a> -->
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-brand-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">{{ t('total_amount') }}</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.total_amount }} <span
+                    class="text-sm font-normal text-gray-500">EGP</span></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-green-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">{{ t('essential') }}</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.essential_total }} <span
+                    class="text-sm font-normal text-gray-500">EGP</span></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-orange-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">{{ t('side') }}</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.side_total }} <span
+                    class="text-sm font-normal text-gray-500">EGP</span></p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-blue-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">{{ t('total_entries') }}</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.total_entries }}</p>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border dark:border-gray-700 p-4">
+
+        <!-- Table Top Controls -->
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                Show
+                <select id="pageSizeSelect" onchange="changePageSize(this.value)"
+                    class="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                    <option value="200">200</option>
+                    <option value="99999">All</option>
+                </select>
+                entries
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table id="expensesTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(0)"></th>
+                        ID <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(1)">
+                            {{ t('date') }} <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(2)">
+                            {{ t('ExpenseYear') }} <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(3)">
+                            {{ t('description') }} <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(4)">
+                            {{ t('expense_type') }} <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none"
+                            onclick="sortTable(5)">
+                            {{ t('amount') }} <i class="fa-solid fa-sort ms-1 opacity-40"></i></th>
+                        <th
+                            class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {{ t('actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for expense in expenses %}
+                    <tr
+                        class="even:bg-gray-50 dark:even:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">
+                            #{{ expense.ID }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <div>{{ expense.Date }}</div>
+                            <div class="text-xs text-gray-400">{{ expense.Time }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{
+                            expense.ExpenseYear }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{
+                            expense.Description }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <span
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' if expense.ExpenseType == 'Essential' else 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' }}">
+                                {{ t('essential') if expense.ExpenseType == 'Essential' else t('side') }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{{
+                            expense.Amount }} EGP</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <div class="flex justify-center gap-2">
+                                <button
+                                    onclick="openEditModal('{{ expense.ID }}', '{{ expense.Amount }}', '{{ expense.Description }}', '{{ expense.ExpenseType }}', '{{ expense.ExpenseYear }}')"
+                                    class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition"
+                                    title="{{ t('edit') }}">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <form action="{{ url_for('delete_expense', id=expense.ID) }}" method="POST"
+                                    onsubmit="return confirm(`{{ t('confirm_delete') }}`);">
+                                    <button type="submit"
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition"
+                                        title="{{ t('delete') }}">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Bottom Controls -->
+        <div class="flex items-center justify-between mt-4 flex-wrap gap-3">
+            <div id="tableInfo" class="text-sm text-gray-600 dark:text-gray-400"></div>
+            <div id="pagination" class="flex items-center gap-1"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="addModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 shadow-xl">
+            <h2 class="text-2xl font-bold mb-4 dark:text-white" id="modalTitle">{{ t('add_expense_title') }}</h2>
+            <form id="modalForm" action="{{ url_for('manual_add') }}" method="POST">
+                <input type="hidden" name="id" id="form-id">
+                <div class="mb-4">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">{{ t('date') }} ({{
+                        t('year') }})</label>
+                    <select name="year" id="form-year"
+                        class="shadow appearance-none border dark:border-gray-600 rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 leading-tight focus:outline-none focus:ring">
+                        {% set current_year = 2025 %}
+                        {% for y in range(current_year - 2, 2041) %}
+                        <option value="{{ y }}" {% if y==current_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">{{ t('amount')
+                        }}</label>
+                    <input name="amount" id="form-amount" type="number" step="0.01"
+                        class="shadow appearance-none border dark:border-gray-600 rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 leading-tight focus:outline-none focus:ring"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">{{ t('description')
+                        }}</label>
+                    <input name="description" id="form-description" type="text"
+                        class="shadow appearance-none border dark:border-gray-600 rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 leading-tight focus:outline-none focus:ring"
+                        required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">{{ t('expense_type')
+                        }}</label>
+                    <select name="expense_type" id="form-expense_type"
+                        class="shadow appearance-none border dark:border-gray-600 rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 leading-tight focus:outline-none focus:ring">
+                        <option value="Essential">{{ t('essential') }}</option>
+                        <option value="Side">{{ t('side') }}</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+                        class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">{{
+                        t('cancel') }}</button>
+                    <button type="submit"
+                        class="bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 px-4 rounded-lg"
+                        id="submitBtn">{{ t('save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ─── Table State ───────────────────────────────────────────
+    const allRows = Array.from(document.querySelectorAll('#tableBody tr'));
+    let filteredRows = [...allRows];
+    let currentPage = 1;
+    let pageSize = 50;
+    let sortCol = -1;
+    let sortAsc = true;
+
+    // ─── Filter ────────────────────────────────────────────────
+    function filterTable() {
+        const q = document.getElementById('customSearch').value.toLowerCase();
+        filteredRows = allRows.filter(row =>
+            row.textContent.toLowerCase().includes(q)
+        );
+        currentPage = 1;
+        render();
+    }
+
+    // ─── Sort ──────────────────────────────────────────────────
+    function sortTable(col) {
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = true; }
+        filteredRows.sort((a, b) => {
+            const va = a.cells[col]?.textContent.trim() || '';
+            const vb = b.cells[col]?.textContent.trim() || '';
+            const na = parseFloat(va), nb = parseFloat(vb);
+            const cmp = (!isNaN(na) && !isNaN(nb)) ? na - nb : va.localeCompare(vb);
+            return sortAsc ? cmp : -cmp;
+        });
+        render();
+    }
+
+    // ─── Page Size ─────────────────────────────────────────────
+    function changePageSize(val) {
+        pageSize = parseInt(val);
+        currentPage = 1;
+        render();
+    }
+
+    // ─── Render ────────────────────────────────────────────────
+    function render() {
+        const tbody = document.getElementById('tableBody');
+        const total = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
+
+        // Show/hide rows
+        allRows.forEach(r => { r.style.display = 'none'; });
+        filteredRows.slice(start, end).forEach(r => { r.style.display = ''; });
+
+        // Info
+        document.getElementById('tableInfo').textContent =
+            total === 0
+                ? 'No entries found'
+                : `Showing ${start + 1} to ${end} of ${total} entries`;
+
+        // Pagination
+        const pg = document.getElementById('pagination');
+        pg.innerHTML = '';
+        const btnClass = 'px-3 py-1 rounded-lg text-sm border transition ';
+        const activeClass = btnClass + 'bg-brand-600 text-white border-brand-600';
+        const normalClass = btnClass + 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600';
+        const disabledClass = btnClass + 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed';
+
+        // Previous
+        const prev = document.createElement('button');
+        prev.textContent = 'Previous';
+        prev.className = currentPage === 1 ? disabledClass : normalClass;
+        prev.disabled = currentPage === 1;
+        prev.onclick = () => { currentPage--; render(); };
+        pg.appendChild(prev);
+
+        // Page numbers (show max 5 around current)
+        const delta = 2;
+        const range = [];
+        for (let i = Math.max(1, currentPage - delta); i <= Math.min(totalPages, currentPage + delta); i++) {
+            range.push(i);
+        }
+        if (range[0] > 1) {
+            const b = document.createElement('button');
+            b.textContent = '1'; b.className = normalClass;
+            b.onclick = () => { currentPage = 1; render(); };
+            pg.appendChild(b);
+            if (range[0] > 2) {
+                const s = document.createElement('span');
+                s.textContent = '…'; s.className = 'px-2 py-1 text-gray-400';
+                pg.appendChild(s);
+            }
+        }
+        range.forEach(p => {
+            const b = document.createElement('button');
+            b.textContent = p;
+            b.className = p === currentPage ? activeClass : normalClass;
+            b.onclick = () => { currentPage = p; render(); };
+            pg.appendChild(b);
+        });
+        if (range[range.length - 1] < totalPages) {
+            if (range[range.length - 1] < totalPages - 1) {
+                const s = document.createElement('span');
+                s.textContent = '…'; s.className = 'px-2 py-1 text-gray-400';
+                pg.appendChild(s);
+            }
+            const b = document.createElement('button');
+            b.textContent = totalPages; b.className = normalClass;
+            b.onclick = () => { currentPage = totalPages; render(); };
+            pg.appendChild(b);
+        }
+
+        // Next
+        const next = document.createElement('button');
+        next.textContent = 'Next';
+        next.className = currentPage === totalPages ? disabledClass : normalClass;
+        next.disabled = currentPage === totalPages;
+        next.onclick = () => { currentPage++; render(); };
+        pg.appendChild(next);
+    }
+
+    // ─── Export Excel ──────────────────────────────────────────
+    function exportToExcel() {
+        const headers = [];
+        document.querySelectorAll('#expensesTable thead th:not(:last-child)').forEach(th => {
+            headers.push(th.textContent.trim().replace(/[\u2191\u2193 ]/g, ''));
+        });
+        const dataRows = [headers];
+        filteredRows.forEach(row => {
+            const cells = Array.from(row.querySelectorAll('td:not(:last-child)'));
+            dataRows.push(cells.map(td => td.textContent.trim()));
+        });
+        const ws = XLSX.utils.aoa_to_sheet(dataRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+        XLSX.writeFile(wb, 'expenses.xlsx');
+    }
+
+    // ─── Modals ────────────────────────────────────────────────
+    function openEditModal(id, amount, description, expenseType, expenseYear) {
+        document.getElementById('modalForm').action = "{{ url_for('update_expense') }}";
+        document.getElementById('modalTitle').innerText = "{{ t('update_expense_title') }}";
+        document.getElementById('submitBtn').innerText = "{{ t('update') }}";
+        document.getElementById('form-id').value = id;
+        document.getElementById('form-amount').value = amount;
+        document.getElementById('form-description').value = description;
+        document.getElementById('form-expense_type').value = expenseType;
+        if (expenseYear) document.getElementById('form-year').value = expenseYear;
+        document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    function openAddModal() {
+        document.getElementById('modalForm').action = "{{ url_for('manual_add') }}";
+        document.getElementById('modalTitle').innerText = "{{ t('add_expense_title') }}";
+        document.getElementById('submitBtn').innerText = "{{ t('save') }}";
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-amount').value = '';
+        document.getElementById('form-description').value = '';
+        document.getElementById('form-expense_type').value = 'Essential';
+        document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    // Init
+    render();
+</script>
+{% endblock %}

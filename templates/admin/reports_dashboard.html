@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{{ t('report_results') }} - {{ t('dashboard') }}
+        </h1>
+        <a href="{{ url_for('view_reports') }}"
+            class="text-brand-600 hover:text-brand-700 dark:text-brand-400 font-medium whitespace-nowrap">
+            <i class="fa-solid fa-list mx-1"></i> {{ t('view_table') }}
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total Records -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-blue-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">عدد السجلات</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.scalar.records }}</p>
+        </div>
+
+        <!-- Total Quantity (عدد) -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-yellow-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">إجمالي العدد (الكمية)</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.scalar.quantity }}</p>
+        </div>
+
+        <!-- Total Commission -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-green-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">العمولة قبل إجمالي</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.scalar.commission }} <span
+                    class="text-sm font-normal text-gray-500">EGP</span></p>
+        </div>
+
+        <!-- Converted Commission -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-b-4 border-purple-500">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium">العمولة قيمة</h3>
+            <p class="text-3xl font-bold text-gray-800 dark:text-white mt-2">{{ stats.scalar.converted }} <span
+                    class="text-sm font-normal text-gray-500">EGP</span></p>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Commission by Period (Bar Chart) -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-4">إجمالي العمولة حسب الفترة</h3>
+            <div class="relative h-64">
+                <canvas id="periodChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Items (Horizontal Bar) -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-4">أعلى الأصناف (عمولة)</h3>
+            <div class="relative h-64">
+                <canvas id="itemsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Commission Breakdown (Pie) -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm md:col-span-2 lg:col-span-1">
+            <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-4">نسبة العمولة المحولة</h3>
+            <div class="relative h-64 flex justify-center">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Data from Backend
+    const periodData = {{ stats.commission_by_period | tojson }};
+    const topItemsData = {{ stats.top_items | tojson }};
+    const pieData = {{ stats.total_vs_converted | tojson }};
+
+    // 1. Commission by Period Chart
+    const ctxPeriod = document.getElementById('periodChart').getContext('2d');
+    new Chart(ctxPeriod, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(periodData),
+            datasets: [{
+                label: 'Commission (EGP)',
+                data: Object.values(periodData),
+                backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                borderColor: 'rgba(34, 197, 94, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 2. Top Items Chart
+    const ctxItems = document.getElementById('itemsChart').getContext('2d');
+    new Chart(ctxItems, {
+        type: 'bar',
+        indexAxis: 'y',
+        data: {
+            labels: Object.keys(topItemsData),
+            datasets: [{
+                label: 'Commission (EGP)',
+                data: Object.values(topItemsData),
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 3. Pie Chart
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['Total Commission', 'Converted Value'],
+            datasets: [{
+                data: [pieData.total, pieData.converted],
+                backgroundColor: ['#22c55e', '#a855f7'],
+                hoverOffset: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+</script>
+{% endblock %}

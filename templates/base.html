@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ dir }}" class="">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('title') }}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    {% block head %}{% endblock %}
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    },
+                    fontFamily: {
+                        body: ['{{ "Cairo" if lang == "ar" else "Inter" }}', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: '{{ "Cairo" if lang == "ar" else "Inter" }}',
+            sans-serif;
+        }
+
+        .mic-wave {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 20px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 text-gray-800 min-h-screen flex flex-col dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <nav class="bg-white shadow-sm dark:bg-gray-800 border-b dark:border-gray-700 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center">
+                    <i class="fa-solid fa-microphone-lines text-brand-600 text-2xl mx-2"></i>
+                    <a href="{{ url_for('dashboard') }}"><span class="font-bold text-xl text-gray-900 dark:text-white">{{
+                            t('title')
+                            }}</span></a>
+                </div>
+
+                <!-- Desktop Navigation Links -->
+                <div class="hidden md:flex items-center space-x-4 space-x-reverse rtl:space-x-reverse">
+
+                    {% if session.get('logged_in') %}
+                    <!-- Top Navigation Links -->
+
+                    <!-- Home (Admin & Record) -->
+                    <!-- {% if session.user_role == 'admin' or session.user_role == 'record' %}
+                    <a href="/"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center">
+                        <i class="fa-solid fa-house mx-1"></i> {{ t('home') }}
+                    </a>
+                    {% endif %} -->
+
+                    <!-- Dashboard & Table (Admin Only) -->
+                    {% if session.user_role == 'admin' %}
+                    <a href="{{ url_for('dashboard') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'dashboard' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-chart-pie mx-1"></i> {{ t('dashboard') }}
+                    </a>
+
+                    <a href="{{ url_for('expenses_table') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'expenses_table' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-table mx-1"></i> {{ t('table_page') }}
+                    </a>
+                    {% endif %}
+
+                    <!-- Upload (Admin & Uploader) -->
+                    {% if session.user_role == 'admin' or session.user_role == 'uploader' %}
+                    <a href="{{ url_for('upload_report_page') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'upload_report_page' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-upload mx-1"></i> {{ t('upload_report') }}
+                    </a>
+                    <a href="{{ url_for('upload_invoice_page') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'upload_invoice_page' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-invoice mx-1"></i> {{ t('upload_invoice') }}
+                    </a>
+                    {% endif %}
+
+                    {% if session.user_role == 'admin' %}
+                    <a href="{{ url_for('view_reports') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'view_reports' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-chart-simple mx-1"></i> {{ t('reports') }}
+                    </a>
+                    <a href="{{ url_for('view_invoices') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'view_invoices' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-invoice-dollar mx-1"></i> {{ t('invoice_results') }}
+                    </a>
+                    {% endif %}
+
+
+                    <!-- Audit Log (System Only) -->
+                    {% if session.get('username') == 'System' %}
+                    <a href="{{ url_for('audit_log') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'audit_log' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-shield-halved mx-1"></i> Audit Log
+                    </a>
+                    {% endif %}
+
+                    <a href="/admin/logout" class="text-red-500 hover:text-red-700 px-3 py-2 text-sm">{{ t('logout')
+                        }}</a>
+                    {% else %}
+                    <a href="/admin/login"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium">{{
+                        t('login_title') }}</a>
+                    {% endif %}
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+
+                    <button id="theme-toggle"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+
+                    {% if lang == 'ar' %}
+                    <a href="/set_lang/en"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-bold px-2">EN</a>
+                    {% else %}
+                    <a href="/set_lang/ar"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-bold px-2">عربي</a>
+                    {% endif %}
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center gap-2">
+                    <button id="theme-toggle-mobile"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button id="mobile-menu-button"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                        aria-controls="mobile-menu" aria-expanded="false">
+                        <i id="mobile-menu-icon" class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="md:hidden hidden pb-4">
+                <div class="flex flex-col gap-2 pt-2">
+                    {% if session.get('logged_in') %}
+                    {% if session.user_role == 'admin' or session.user_role == 'record' %}
+                    <a href="/"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center">
+                        <i class="fa-solid fa-house mx-1"></i> {{ t('home') }}
+                    </a>
+                    {% endif %}
+
+                    {% if session.user_role == 'admin' %}
+                    <a href="{{ url_for('dashboard') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'dashboard' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-chart-pie mx-1"></i> {{ t('dashboard') }}
+                    </a>
+
+                    <a href="{{ url_for('expenses_table') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'expenses_table' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-table mx-1"></i> {{ t('table_page') }}
+                    </a>
+                    {% endif %}
+
+                    {% if session.user_role == 'admin' or session.user_role == 'uploader' %}
+                    <a href="{{ url_for('upload_report_page') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'upload_report_page' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-upload mx-1"></i> {{ t('upload_report') }}
+                    </a>
+                    <a href="{{ url_for('upload_invoice_page') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'upload_invoice_page' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-invoice mx-1"></i> {{ t('upload_invoice') }}
+                    </a>
+                    {% endif %}
+
+                    {% if session.user_role == 'admin' %}
+                    <a href="{{ url_for('view_reports') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'view_reports' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-chart-simple mx-1"></i> {{ t('reports') }}
+                    </a>
+                    <a href="{{ url_for('view_invoices') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'view_invoices' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-file-invoice-dollar mx-1"></i> {{ t('invoice_results') }}
+                    </a>
+                    {% endif %}
+
+                    {% if session.get('username') == 'System' %}
+                    <a href="{{ url_for('audit_log') }}"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium flex items-center {% if request.endpoint == 'audit_log' %}text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-gray-700{% endif %}">
+                        <i class="fa-solid fa-shield-halved mx-1"></i> Audit Log
+                    </a>
+                    {% endif %}
+
+                    <a href="/admin/logout" class="text-red-500 hover:text-red-700 px-3 py-2 text-sm">{{ t('logout')
+                        }}</a>
+                    {% else %}
+                    <a href="/admin/login"
+                        class="text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 px-3 py-2 rounded-md font-medium">
+                        {{ t('login_title') }}
+                    </a>
+                    {% endif %}
+
+                    <div class="h-px bg-gray-300 dark:bg-gray-600 my-1"></div>
+
+                    {% if lang == 'ar' %}
+                    <a href="/set_lang/en"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-bold px-3 py-2">EN</a>
+                    {% else %}
+                    <a href="/set_lang/ar"
+                        class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-bold px-3 py-2">عربي</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="flash-messages" class="hidden">
+            {% for category, message in messages %}
+            <div data-category="{{ category }}" data-message="{{ message }}"></div>
+            {% endfor %}
+        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                const messagesEls = document.querySelectorAll('#flash-messages div');
+                messagesEls.forEach(el => {
+                    const msg = el.getAttribute('data-message');
+                    const category = el.getAttribute('data-category');
+                    let iconType = 'success';
+                    const lowerMsg = msg.toLowerCase();
+
+                    if (lowerMsg.includes('error') || lowerMsg.includes('invalid') || lowerMsg.includes('denied') || lowerMsg.includes('no file') || lowerMsg.includes('no selected')) {
+                        iconType = 'error';
+                    }
+                    if (['error', 'success', 'warning', 'info'].includes(category)) {
+                        iconType = category;
+                    }
+
+                    Toast.fire({
+                        icon: iconType,
+                        title: msg
+                    });
+                });
+            });
+        </script>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t mt-auto py-6 dark:bg-gray-800 dark:border-gray-700 transition-colors duration-300">
+        <div class="container mx-auto text-center text-gray-500 dark:text-gray-400 text-sm">
+            &copy; 2025 {{ t('title') }}. {{ t('footer') }}.
+        </div>
+    </footer>
+
+    <script>
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
+        const htmlElement = document.documentElement;
+
+        function updateThemeIcons() {
+            const iconHtml = htmlElement.classList.contains('dark')
+                ? '<i class="fa-solid fa-sun text-yellow-500"></i>'
+                : '<i class="fa-solid fa-moon"></i>';
+
+            if (themeToggleBtn) themeToggleBtn.innerHTML = iconHtml;
+            if (themeToggleMobileBtn) themeToggleMobileBtn.innerHTML = iconHtml;
+        }
+
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+        } else {
+            htmlElement.classList.remove('dark');
+        }
+        updateThemeIcons();
+
+        function toggleTheme() {
+            if (htmlElement.classList.contains('dark')) {
+                htmlElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                htmlElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+            updateThemeIcons();
+        }
+
+        if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+        if (themeToggleMobileBtn) themeToggleMobileBtn.addEventListener('click', toggleTheme);
+
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuIcon = document.getElementById('mobile-menu-icon');
+
+        if (mobileMenuButton && mobileMenu && mobileMenuIcon) {
+            mobileMenuButton.addEventListener('click', () => {
+                const isHidden = mobileMenu.classList.toggle('hidden');
+                mobileMenuButton.setAttribute('aria-expanded', String(!isHidden));
+                mobileMenuIcon.className = isHidden ? 'fa-solid fa-bars' : 'fa-solid fa-xmark';
+            });
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
